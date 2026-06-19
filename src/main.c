@@ -40,10 +40,12 @@ int main(void) {
     DIAG("scaffold: display up, backlight on\n");
 
     codec_nau88c10_init();
-    if (codec_nau88c10_input_ok())
-        DIAG("codec: input path ready\n");
-    st7796_draw_text(8, 40, 2, rgb565_be(0,255,0), rgb565_be(0,0,40),
-                     "CODEC OK");
+    bool codec_ok = codec_nau88c10_input_ok();
+    if (codec_ok) DIAG("codec: input path ready\n");
+    st7796_draw_text(8, 40, 2,
+                     codec_ok ? rgb565_be(0,255,0) : rgb565_be(255,0,0),
+                     rgb565_be(0,0,40),
+                     codec_ok ? "CODEC OK" : "CODEC FAIL");
 
     audio_i2s_rx_init(16000);
     vu_capture_start();
@@ -54,12 +56,19 @@ int main(void) {
     vu_draw(0);   // empty bar baseline
 
     uint32_t blk = 0;
+    absolute_time_t last_block = get_absolute_time();
+    bool warned = false;
     while (true) {
         if (vu_block_ready()) {
             uint16_t pk = vu_block_peak();
             vu_draw(pk);
             if ((blk++ & 0x1F) == 0)              // ~twice a second at 16ms blocks
                 DIAG("vu: blk=%u peak=%u\n", (unsigned)blk, (unsigned)pk);
+            last_block = get_absolute_time();
+            warned = false;
+        } else if (!warned && absolute_time_diff_us(last_block, get_absolute_time()) > 1000000) {
+            DIAG("vu: no audio blocks for >1s (RX/clock dead?)\n");
+            warned = true;
         }
         tight_loop_contents();
     }
