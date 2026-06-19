@@ -10,6 +10,7 @@ add_executable(externalmicvalid
     src/platform/board.c
     src/display/st7796.c
     src/display/font5x7.c
+    src/audio/vu_meter.c
     third_party/segger_rtt/SEGGER_RTT.c
     third_party/segger_rtt/SEGGER_RTT_printf.c
 )
