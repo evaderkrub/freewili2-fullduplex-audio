@@ -2,7 +2,7 @@
 // into two block buffers. The completion IRQ flags the just-filled buffer; the
 // core-0 loop drains it via vu_block_peak().
 #include "audio/vu_capture.h"
-#include "audio/audio_i2s_rx.h"
+#include "audio/audio_i2s_duplex.h"
 #include "audio/vu_meter.h"
 #include "hardware/dma.h"
 #include "hardware/irq.h"
@@ -17,9 +17,9 @@ static void start_channel(int ch, int other_ch, uint32_t *dst) {
     channel_config_set_transfer_data_size(&c, DMA_SIZE_32);
     channel_config_set_read_increment(&c, false);
     channel_config_set_write_increment(&c, true);
-    channel_config_set_dreq(&c, audio_i2s_rx_dreq());
+    channel_config_set_dreq(&c, audio_i2s_duplex_rx_dreq());
     channel_config_set_chain_to(&c, other_ch);   // ping-pong
-    dma_channel_configure(ch, &c, dst, audio_i2s_rx_rxf(), VU_BLOCK_FRAMES, false);
+    dma_channel_configure(ch, &c, dst, audio_i2s_duplex_rxf(), VU_BLOCK_FRAMES, false);
 }
 
 static void dma_irq(void) {

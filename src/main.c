@@ -1,11 +1,15 @@
-// src/main.c — external-microphone validation firmware (FreeWili 2 / RP2350B).
+// src/main.c — full-duplex speaker + external-mic firmware (FreeWili 2 / RP2350B).
+// Plays a 1 kHz tone out the onboard speaker (NAU88C10 DAC) while capturing the
+// 3.5 mm external mic (NAU88C10 ADC) on the same I2S bus. Cycles SILENCE/TONE so
+// the on-device VU bar and an off-device (eMeet) recording both show a clean delta.
 #include "pico/stdlib.h"
 #include "platform/board.h"
 #include "platform/diag.h"
 #include "platform/ioexp_pcal6524.h"
 #include "display/st7796.h"
 #include "audio/codec_nau88c10.h"
-#include "audio/audio_i2s_rx.h"
+#include "audio/audio_i2s_duplex.h"
+#include "audio/tone_gen.h"
 #include "audio/vu_capture.h"
 #include "audio/vu_meter.h"
 
@@ -17,7 +21,7 @@ static inline uint16_t rgb565_be(uint8_t r, uint8_t g, uint8_t b) {
 
 // VU bar geometry on the 480x320 panel.
 #define VU_X      20
-#define VU_Y      160
+#define VU_Y      200
 #define VU_W      440
 #define VU_H      60
 
@@ -31,7 +35,7 @@ static void vu_draw(uint16_t peak) {
 
 int main(void) {
     board_init();
-    DIAG("\n=== externalmicvalid: boot ===\n");
+    DIAG("\n=== externalmicvalid: full-duplex boot ===\n");
 
     // Release the panel's hardware reset (SCREEN_nRST) and route the GPIO25
     // backlight to the RP2350 via the PCAL6524 I/O expander. Without this the
@@ -41,7 +45,7 @@ int main(void) {
     st7796_init();
     st7796_fill_screen(rgb565_be(0, 0, 40));      // dark blue test fill
     st7796_draw_text(8, 8, 2, rgb565_be(255,255,255), rgb565_be(0,0,40),
-                     "EXT MIC VALIDATION");
+                     "SPEAKER + MIC E2E");
     board_backlight_set(1);
     DIAG("scaffold: display up, backlight on\n");
 
@@ -53,28 +57,54 @@ int main(void) {
                      rgb565_be(0,0,40),
                      codec_ok ? "CODEC OK" : "CODEC FAIL");
 
-    audio_i2s_rx_init(16000);
+    // 1 kHz tone ring: 64 frames @ 16 kHz = 4 whole periods = 256 bytes (ring-aligned).
+    static uint32_t tone_buf[64] __attribute__((aligned(256)));
+    int16_t mono[64]; float ph = 0.0f;
+    tone_gen_fill(mono, 64, 1000.0f, 16000.0f, &ph);
+    for (int i = 0; i < 64; i++) {
+        uint16_t s = (uint16_t)mono[i];
+        tone_buf[i] = ((uint32_t)s << 16) | s;   // same sample on L and R slots
+    }
+
+    codec_nau88c10_dac_mute(false);           // DAC live (init left it soft-muted)
+    audio_i2s_duplex_init(16000);
     vu_capture_start();
-    DIAG("vu_capture: streaming; tap the mic...\n");
+    DIAG("duplex: streaming; cycling SILENCE/TONE...\n");
 
     st7796_draw_text(VU_X, VU_Y - 24, 2, rgb565_be(255,255,255),
                      rgb565_be(0,0,40), "MIC LEVEL");
     vu_draw(0);   // empty bar baseline
 
+    // SILENCE 3s -> TONE 6s -> SILENCE 3s, looping. Banner is large for the camera.
+    enum { ST_SILENCE, ST_TONE } state = ST_SILENCE;
+    bool playing = false;
+    st7796_fill_rect(8, 80, 464, 44, rgb565_be(60,0,0));
+    st7796_draw_text(16, 90, 3, rgb565_be(255,255,255), rgb565_be(60,0,0), "TONE OFF");
+    absolute_time_t t_state = get_absolute_time();
     uint32_t blk = 0;
-    absolute_time_t last_block = get_absolute_time();
-    bool warned = false;
     while (true) {
+        int64_t held = absolute_time_diff_us(t_state, get_absolute_time());
+        if (state == ST_SILENCE && held > 3000000) {
+            state = ST_TONE; t_state = get_absolute_time();
+            audio_i2s_duplex_play_loop(tone_buf, 64); playing = true;
+            st7796_fill_rect(8, 80, 464, 44, rgb565_be(0,120,0));
+            st7796_draw_text(16, 90, 3, rgb565_be(255,255,255), rgb565_be(0,120,0),
+                             "TONE ON  1kHz");
+            DIAG("state=TONE (play 1kHz)\n");
+        } else if (state == ST_TONE && held > 6000000) {
+            state = ST_SILENCE; t_state = get_absolute_time();
+            audio_i2s_duplex_play_stop(); playing = false;
+            st7796_fill_rect(8, 80, 464, 44, rgb565_be(60,0,0));
+            st7796_draw_text(16, 90, 3, rgb565_be(255,255,255), rgb565_be(60,0,0),
+                             "TONE OFF");
+            DIAG("state=SILENCE\n");
+        }
         if (vu_block_ready()) {
             uint16_t pk = vu_block_peak();
             vu_draw(pk);
-            if ((blk++ & 0x1F) == 0)              // ~twice a second at 16ms blocks
-                DIAG("vu: blk=%u peak=%u\n", (unsigned)blk, (unsigned)pk);
-            last_block = get_absolute_time();
-            warned = false;
-        } else if (!warned && absolute_time_diff_us(last_block, get_absolute_time()) > 1000000) {
-            DIAG("vu: no audio blocks for >1s (RX/clock dead?)\n");
-            warned = true;
+            if ((blk++ & 0x0F) == 0)
+                DIAG("vu: state=%s blk=%u peak=%u\n", playing ? "TONE" : "SIL",
+                     (unsigned)blk, (unsigned)pk);
         }
         tight_loop_contents();
     }
