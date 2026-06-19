@@ -23,13 +23,13 @@ int main(int argc, char **argv) {
         return 0;
     }
     if (!strcmp(cmd, "bar")) {
-        uint16_t peak = (uint16_t)atoi(argv[2]);
+        uint16_t peak = (uint16_t)strtoul(argv[2], NULL, 0);
         int max_px = atoi(argv[3]);
         printf("%d\n", vu_bar_px(peak, max_px));
         return 0;
     }
     if (!strcmp(cmd, "color")) {
-        uint16_t peak = (uint16_t)atoi(argv[2]);
+        uint16_t peak = (uint16_t)strtoul(argv[2], NULL, 0);
         printf("%04x\n", (unsigned)vu_color_be(peak));
         return 0;
     }
