@@ -30,6 +30,7 @@ static void dma_irq(void) {
             dma_channel_set_write_addr(s_dma[i], s_buf[i], false);
             s_done = i;
             s_ready = true;
+            break;
         }
     }
 }
