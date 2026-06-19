@@ -5,6 +5,7 @@
 #include "display/st7796.h"
 #include "audio/codec_nau88c10.h"
 #include "audio/audio_i2s_rx.h"
+#include "audio/vu_capture.h"
 
 // Big-endian RGB565 (the panel sends the high byte first).
 static inline uint16_t rgb565_be(uint8_t r, uint8_t g, uint8_t b) {
@@ -30,14 +31,15 @@ int main(void) {
                      "CODEC OK");
 
     audio_i2s_rx_init(16000);
-    DIAG("i2s_rx: started, sampling raw frames...\n");
-    for (int i = 0; i < 8; i++) {
-        uint32_t f = audio_i2s_rx_get_blocking();
-        DIAG("i2s_rx: frame[%d] = 0x%08x (L=0x%04x R=0x%04x)\n",
-             i, (unsigned)f, (unsigned)(f >> 16), (unsigned)(f & 0xFFFF));
-    }
-
+    vu_capture_start();
+    DIAG("vu_capture: streaming; tap the mic...\n");
+    uint32_t blk = 0;
     while (true) {
+        if (vu_block_ready()) {
+            uint16_t pk = vu_block_peak();
+            if ((blk++ & 0x1F) == 0)              // ~twice a second at 16ms blocks
+                DIAG("vu: blk=%u peak=%u\n", (unsigned)blk, (unsigned)pk);
+        }
         tight_loop_contents();
     }
 }

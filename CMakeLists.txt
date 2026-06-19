@@ -13,6 +13,7 @@ add_executable(externalmicvalid
     src/audio/vu_meter.c
     src/audio/codec_nau88c10.c
     src/audio/audio_i2s_rx.c
+    src/audio/vu_capture.c
     third_party/segger_rtt/SEGGER_RTT.c
     third_party/segger_rtt/SEGGER_RTT_printf.c
 )
@@ -32,6 +33,7 @@ target_link_libraries(externalmicvalid PRIVATE
     hardware_gpio
     hardware_spi
     hardware_dma
+    hardware_irq
     hardware_pwm
     hardware_i2c
     hardware_pio
