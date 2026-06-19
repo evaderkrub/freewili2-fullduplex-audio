@@ -12,9 +12,13 @@ add_executable(externalmicvalid
     src/display/font5x7.c
     src/audio/vu_meter.c
     src/audio/codec_nau88c10.c
+    src/audio/audio_i2s_rx.c
     third_party/segger_rtt/SEGGER_RTT.c
     third_party/segger_rtt/SEGGER_RTT_printf.c
 )
+
+pico_generate_pio_header(externalmicvalid
+    ${CMAKE_CURRENT_LIST_DIR}/src/audio/i2s_rx.pio)
 
 target_include_directories(externalmicvalid PRIVATE
     src third_party/segger_rtt)

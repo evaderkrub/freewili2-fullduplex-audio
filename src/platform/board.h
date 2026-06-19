@@ -21,6 +21,7 @@
 
 // --- Audio (NAU88C10 codec; pins from FW2Display_pin_definitions.h) ---
 #define PIN_AUDIO_DATA 5    // SPK_DIN: I2S data into the codec (PIO out)
+#define PIN_AUDIO_DIN  4    // SPK_DOUT: codec ADC data into the MCU (PIO in)
 #define PIN_AUDIO_LRCK 6    // SPK_LRCK: I2S word clock (PIO sideset bit 0)
 #define PIN_AUDIO_BCLK 7    // SPK_BCLK: I2S bit clock (PIO sideset bit 1)
 #define PIN_AUDIO_MCLK 22   // SPK_MCLK: 256*fs square wave from PWM
