@@ -1,0 +1,26 @@
+; src/audio/i2s_rx.pio — I2S receiver, MCU supplies all clocks (codec = slave).
+; 16 bits/channel, MSB first, 32 bits/frame. side-set: bit0 = LRCK, bit1 = BCLK.
+; 2 PIO cycles per bit -> PIO clock = 64*fs (BCLK = 32*fs). Sample DIN on the
+; BCLK-high half (rising edge). Autopush at 32 -> one 32-bit frame = [L16 | R16].
+;
+; ALIGNMENT KNOB (the known bring-up risk): if captured peaks stay at the floor
+; while the mic is driven, the sample point is off by one BCLK / the LRCK phase
+; is inverted. Fixes, tried in order: (1) flip MIC_I2S_SLOT in vu_capture.c;
+; (2) move the `in pins,1` from the BCLK-high to the BCLK-low instruction in
+; each pair; (3) swap which side value (0b00 vs 0b01) starts the left channel.
+
+.program i2s_rx
+.side_set 2
+
+.wrap_target
+    set x, 14            side 0b00   ; LEFT: LRCK=0, BCLK=0, 16 bits total
+left_bit:
+    in pins, 1           side 0b10   ; BCLK high: sample DIN (rising edge)
+    jmp x-- left_bit     side 0b00   ; BCLK low: advance
+    in pins, 1           side 0b10   ; 16th left bit
+    set x, 14            side 0b01   ; RIGHT: LRCK=1, BCLK=0
+right_bit:
+    in pins, 1           side 0b11   ; BCLK high, LRCK high: sample
+    jmp x-- right_bit    side 0b01   ; BCLK low
+    in pins, 1           side 0b11   ; 16th right bit
+.wrap
