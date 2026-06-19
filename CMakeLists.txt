@@ -18,6 +18,7 @@ add_executable(externalmicvalid
     src/display/st7796.c
     src/display/font5x7.c
     src/audio/vu_meter.c
+    src/audio/tone_gen.c
     src/audio/codec_nau88c10.c
     src/audio/audio_i2s_rx.c
     src/audio/vu_capture.c
