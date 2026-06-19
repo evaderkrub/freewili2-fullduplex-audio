@@ -44,3 +44,35 @@ The RX bit/slot alignment is isolated to two knobs — apply **in this order**, 
 
 These are the only expected bring-up failure modes; everything else (interfaces,
 init order, DMA/PIO wiring, frame layout) was statically verified in review.
+
+---
+
+## ON-DEVICE RESULTS (validated on hardware, probe + RTT + EMEET camera)
+
+All acceptance steps **PASS**. Root causes found and fixed during bring-up:
+
+1. **HardFault during st7796 init → core overclock instability.** The vendored
+   movieplayer clock of **252 MHz** is above this FW2 chip's stable ceiling even
+   at 1.15 V and caused a HardFault at the GPIO-coprocessor `gpio_put` in
+   `st7796.c` (the symptom: reproduces at full speed, clean when single-stepped).
+   **Fix: `BOARD_SYS_CLOCK_KHZ` 252000 → 153600** (the proven-stable rate from the
+   microphonearray display firmware). This was THE blocker.
+2. **Build/bring-up config aligned to the proven display project**
+   (`microphonearray`): `PICO_BOARD=freewili2` (RP2350B), `copy_to_ram`, and
+   `ioexp_init()` (PCAL6524) before `st7796_init()` to release `SCREEN_nRST` and
+   route the GPIO25 backlight — without it the panel stays dark.
+3. **I2S RX alignment:** the codec emitted I2S-standard (1-BCLK MSB delay) but the
+   RX PIO samples at the LRCK edge, so every sample read as `real>>1` and the mic
+   railed at 32767. **Fix: codec AIFMT → left-justified (reg 0x04 = 0x08).**
+4. **Channel:** the mono NAU88C10 ADC streams on the **right** I2S slot.
+   **Fix: `MIC_I2S_SLOT` 0 → 1** (left slot read silent 0).
+
+After the fixes, RTT shows the full boot, `codec rev=0x01A pm2=0x015`, and the VU
+peak reads a clean noise floor (~12–24) at rest, rising to **~220–235** when the
+mic catches sound (and a full-scale 27372 startup transient) — the external mic
+captures correctly-aligned audio and tracks acoustic input. The ST7796 VU meter
+renders (confirmed via the EMEET camera). **External microphone support: VALIDATED.**
+
+Note: PC-speaker tone coupling into the board's 3.5 mm mic is weak at desk
+distance; for a hands-free known-signal E2E, add full-duplex I2S to play a tone
+out the board's own speaker (deferred — the mic path itself is proven).

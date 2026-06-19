@@ -1,3 +1,7 @@
 __pycache__/
 *.pyc
 /build/
+
+# debug/test media
+*.png
+*.wav
