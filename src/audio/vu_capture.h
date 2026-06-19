@@ -6,7 +6,8 @@
 #include <stdbool.h>
 
 #define VU_BLOCK_FRAMES 256   // ~16 ms at 16 kHz
-#define MIC_I2S_SLOT    0     // 0 = left, 1 = right (flip if VU stays flat)
+#define MIC_I2S_SLOT    1     // right slot: the mono NAU88C10 ADC streams here
+                              // (verified on hardware: left slot reads silent 0)
 
 // Start MCLK/RX must already be running (audio_i2s_rx_init). Claims 2 DMA
 // channels chained ping-pong into two block buffers and installs DMA_IRQ_0.

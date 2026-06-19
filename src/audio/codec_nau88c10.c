@@ -32,8 +32,12 @@ void codec_nau88c10_init(void) {
     codec_write(0x01, 0x015d);
     codec_write(0x02, 0x0015);
     codec_write(0x03, 0x00ED);
-    // Audio control: I2S 16-bit, slave, MCLK direct
-    codec_write(0x04, 0x0010);
+    // Audio control: 16-bit, slave, MCLK direct. AIFMT = LEFT-JUSTIFIED (0x08),
+    // not I2S-standard (0x10): I2S-standard delays the MSB one BCLK after LRCK,
+    // but our RX PIO (i2s_rx.pio) samples 16 bits starting AT the LRCK edge.
+    // Left-justified puts the MSB on that first BCLK so the captured word aligns
+    // (else every sample reads as real>>1 and the mic rails at full scale).
+    codec_write(0x04, 0x0008);
     codec_write(0x05, 0x0000);
     codec_write(0x06, 0x0000);
     codec_write(0x07, 0x0006);   // SMPLR = 16 kHz (vendor 8 kHz was 0x000a)

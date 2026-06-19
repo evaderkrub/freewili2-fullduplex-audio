@@ -2,6 +2,7 @@
 #include "pico/stdlib.h"
 #include "platform/board.h"
 #include "platform/diag.h"
+#include "platform/ioexp_pcal6524.h"
 #include "display/st7796.h"
 #include "audio/codec_nau88c10.h"
 #include "audio/audio_i2s_rx.h"
@@ -31,6 +32,11 @@ static void vu_draw(uint16_t peak) {
 int main(void) {
     board_init();
     DIAG("\n=== externalmicvalid: boot ===\n");
+
+    // Release the panel's hardware reset (SCREEN_nRST) and route the GPIO25
+    // backlight to the RP2350 via the PCAL6524 I/O expander. Without this the
+    // ST7796 ignores all SPI and the screen stays dark.
+    if (!ioexp_init()) DIAG("ioexp: init NAK at 0x23\n");
 
     st7796_init();
     st7796_fill_screen(rgb565_be(0, 0, 40));      // dark blue test fill

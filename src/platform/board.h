@@ -29,13 +29,14 @@
 #define PIN_I2C1_SCL   27   // I2C1_SCL: codec control bus
 
 // --- Clocks ---
-// 252 MHz (vreg 1.15V). Chosen so clk_hstx = clk_sys/2 = 126 MHz yields an EXACT
-// 25.2 MHz DVI pixel clock (126/CLKDIV(5)) = standard 640x480p60 (see hstx_dvi.c).
-// USB host is on its own 48 MHz PLL, unaffected; SPI is pinned <=100 MHz
-// independently (st7796.c); PSRAM/audio dividers self-adjust from clk_sys at
-// runtime. Was 264 MHz (Stage 4); the ~4.5% decode loss is negligible.
-// Overclock ladder fallback: 252000 -> 240000 -> 200000 (safe).
-#define BOARD_SYS_CLOCK_KHZ 252000
+// 153.6 MHz (vreg 1.15V) — the PROVEN-STABLE rate for this FW2 board, matching the
+// working microphonearray display firmware. The movieplayer value of 252 MHz is
+// above this chip's stable ceiling even at 1.15 V: it causes intermittent core
+// hard-faults during the heavy st7796 SPI/GPIO bring-up that reproduce only at full
+// speed (clean when single-stepped) — the exact symptom we hit. 153.6 MHz =
+// 50 * 3.072 MHz also yields clean audio dividers. SPI is pinned independently
+// (st7796.c); the I2S MCLK/BCLK dividers self-adjust from clk_sys at runtime.
+#define BOARD_SYS_CLOCK_KHZ 153600
 
 // Bring up clocks (252 MHz + vreg 1.15V + clk_peri re-source), park LoRa CS, backlight off.
 void board_init(void);

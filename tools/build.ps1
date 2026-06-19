@@ -39,8 +39,9 @@ cmake -G Ninja -B $BuildDir -S $RepoRoot `
     -DPICO_SDK_PATH="$SdkPath" `
     -DPICO_TOOLCHAIN_PATH="$Toolchain" `
     -DPICO_PLATFORM=rp2350 `
-    -DPICO_BOARD=pico2 `
     -Dpicotool_DIR="$PicotoolDir"
+    # NOTE: do NOT pass -DPICO_BOARD here — CMakeLists.txt sets PICO_BOARD=freewili2
+    # (RP2350B). Passing pico2 would override it back to the wrong RP2350A config.
 if ($LASTEXITCODE -ne 0) { throw "cmake configure failed ($LASTEXITCODE)" }
 
 cmake --build $BuildDir
