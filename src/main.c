@@ -3,6 +3,7 @@
 #include "platform/board.h"
 #include "platform/diag.h"
 #include "display/st7796.h"
+#include "audio/codec_nau88c10.h"
 
 // Big-endian RGB565 (the panel sends the high byte first).
 static inline uint16_t rgb565_be(uint8_t r, uint8_t g, uint8_t b) {
@@ -20,6 +21,12 @@ int main(void) {
                      "EXT MIC VALIDATION");
     board_backlight_set(1);
     DIAG("scaffold: display up, backlight on\n");
+
+    codec_nau88c10_init();
+    if (codec_nau88c10_input_ok())
+        DIAG("codec: input path ready\n");
+    st7796_draw_text(8, 40, 2, rgb565_be(0,255,0), rgb565_be(0,0,40),
+                     "CODEC OK");
 
     while (true) {
         tight_loop_contents();
