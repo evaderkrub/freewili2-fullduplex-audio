@@ -9,3 +9,6 @@ __pycache__/
 # editor temp copies
 *.tmp
 *.tmp.*
+
+# eMeet capture / RTT debug output
+tools/screencap/captures/
