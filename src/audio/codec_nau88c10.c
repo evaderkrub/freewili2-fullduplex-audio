@@ -153,6 +153,14 @@ static uint16_t codec_read(uint8_t reg) {
     return (uint16_t)(((val[0] & 0x01) << 8) | val[1]);
 }
 
+void codec_nau88c10_log_output(void) {
+    // Read back the output-routing regs. Note 0x45 is beyond the NAU8810 map and may
+    // not read back its written value; 0x03/0x36/0x38 are the meaningful confirmation.
+    DIAG("codec: out regs R3=0x%03x R36=0x%03x R38=0x%03x R45=0x%03x\n",
+         (unsigned)codec_read(0x03), (unsigned)codec_read(0x36),
+         (unsigned)codec_read(0x38), (unsigned)codec_read(0x45));
+}
+
 bool codec_nau88c10_input_ok(void) {
     uint16_t rev = codec_read(0x3F);
     uint16_t pm2 = codec_read(0x02);
