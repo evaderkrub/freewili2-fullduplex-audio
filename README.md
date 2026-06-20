@@ -9,6 +9,10 @@ The included demo plays a 1 kHz tone out the speaker while running a live mic VU
 on the ST7796 LCD, and ships scripts that prove — hands-free, via a USB webcam + mic —
 that the speaker is actually emitting sound.
 
+![Full-duplex demo on the FreeWili 2 — the 1 kHz tone cycles SILENCE → SPEAKER → 3.5 mm jack while the mic VU meter runs live](docs/media/demo.gif)
+
+*The board cycling `SPEAKER 1kHz` → `3.5mm JACK 1kHz` → `TONE OFF`, captured live over the eMeet camera.*
+
 > Bench note: the speaker on the dev unit is physically blown, so its output is heavily
 > distorted (a ~5 kHz resonance dominates). The validation goal here is "sound is
 > present and tracks the commanded frequency," not audio quality.
