@@ -112,3 +112,7 @@ result and the fundamental-tracking proof: `docs/superpowers/findings/2026-06-19
 
 - Spec: `docs/superpowers/specs/2026-06-19-fullduplex-speaker-mic-design.md`
 - Plan: `docs/superpowers/plans/2026-06-19-fullduplex-speaker-mic.md`
+
+## License
+
+MIT — see [LICENSE](LICENSE).
