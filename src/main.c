@@ -45,7 +45,7 @@ int main(void) {
     st7796_init();
     st7796_fill_screen(rgb565_be(0, 0, 40));      // dark blue test fill
     st7796_draw_text(8, 8, 2, rgb565_be(255,255,255), rgb565_be(0,0,40),
-                     "SPEAKER + MIC E2E");
+                     "AUDIO OUT + MIC");
     board_backlight_set(1);
     DIAG("scaffold: display up, backlight on\n");
 
@@ -75,9 +75,12 @@ int main(void) {
                      rgb565_be(0,0,40), "MIC LEVEL");
     vu_draw(0);   // empty bar baseline
 
-    // SILENCE 3s -> TONE 6s -> SILENCE 3s, looping. Banner is large for the camera.
-    enum { ST_SILENCE, ST_TONE } state = ST_SILENCE;
-    bool playing = false;
+    // A/B output demo: SILENCE 3s -> SPEAKER 4s -> 3.5mm JACK 4s, looping. The 1 kHz
+    // DAC stream runs continuously across SPEAKER+JACK; only the codec's analog output
+    // routing switches (set_output), so the same tone moves speaker -> headphone jack.
+    // Banners are large for the camera; output regs are logged on each switch.
+    enum { ST_SILENCE, ST_SPEAKER, ST_JACK } state = ST_SILENCE;
+    const char *st_name[] = { "SIL", "SPK", "JACK" };
     st7796_fill_rect(8, 80, 464, 44, rgb565_be(60,0,0));
     st7796_draw_text(16, 90, 3, rgb565_be(255,255,255), rgb565_be(60,0,0), "TONE OFF");
     absolute_time_t t_state = get_absolute_time();
@@ -85,15 +88,25 @@ int main(void) {
     while (true) {
         int64_t held = absolute_time_diff_us(t_state, get_absolute_time());
         if (state == ST_SILENCE && held > 3000000) {
-            state = ST_TONE; t_state = get_absolute_time();
-            audio_i2s_duplex_play_loop(tone_buf, 64); playing = true;
+            state = ST_SPEAKER; t_state = get_absolute_time();
+            codec_nau88c10_set_output(CODEC_OUT_SPEAKER);
+            audio_i2s_duplex_play_loop(tone_buf, 64);
             st7796_fill_rect(8, 80, 464, 44, rgb565_be(0,120,0));
             st7796_draw_text(16, 90, 3, rgb565_be(255,255,255), rgb565_be(0,120,0),
-                             "TONE ON  1kHz");
-            DIAG("state=TONE (play 1kHz)\n");
-        } else if (state == ST_TONE && held > 6000000) {
+                             "SPEAKER 1kHz");
+            DIAG("state=SPEAKER (tone -> onboard speaker)\n");
+            codec_nau88c10_log_output();
+        } else if (state == ST_SPEAKER && held > 4000000) {
+            state = ST_JACK; t_state = get_absolute_time();
+            codec_nau88c10_set_output(CODEC_OUT_HEADPHONE);   // route to 3.5mm jack
+            st7796_fill_rect(8, 80, 464, 44, rgb565_be(0,90,160));
+            st7796_draw_text(16, 90, 3, rgb565_be(255,255,255), rgb565_be(0,90,160),
+                             "3.5mm JACK 1kHz");
+            DIAG("state=JACK (tone -> 3.5mm headphone jack; speaker muted)\n");
+            codec_nau88c10_log_output();
+        } else if (state == ST_JACK && held > 4000000) {
             state = ST_SILENCE; t_state = get_absolute_time();
-            audio_i2s_duplex_play_stop(); playing = false;
+            audio_i2s_duplex_play_stop();
             st7796_fill_rect(8, 80, 464, 44, rgb565_be(60,0,0));
             st7796_draw_text(16, 90, 3, rgb565_be(255,255,255), rgb565_be(60,0,0),
                              "TONE OFF");
@@ -103,7 +116,7 @@ int main(void) {
             uint16_t pk = vu_block_peak();
             vu_draw(pk);
             if ((blk++ & 0x0F) == 0)
-                DIAG("vu: state=%s blk=%u peak=%u\n", playing ? "TONE" : "SIL",
+                DIAG("vu: state=%s blk=%u peak=%u\n", st_name[state],
                      (unsigned)blk, (unsigned)pk);
         }
         tight_loop_contents();

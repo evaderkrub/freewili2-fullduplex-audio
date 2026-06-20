@@ -51,6 +51,25 @@ Un-mirrored (`hflip`) contrast-boosted stills:
 - `captures/evidence_TONE_ON.png` — green **"TONE ON 1kHz"** banner + green VU bar.
 - `captures/evidence_TONE_OFF.png` — red **"TONE OFF"** banner during the silence window.
 
+## Addendum (2026-06-20): output through the 3.5 mm TRRS jack — CONFIRMED
+
+The 3.5 mm jack is a **TRRS combo** (external mic + headphone share the one jack), so
+the codec's headphone output is wired to it. The demo now A/B-cycles
+`SILENCE → SPEAKER (4 s) → 3.5mm JACK (4 s)`; the 1 kHz DAC stream runs continuously
+and only `codec_nau88c10_set_output()` flips the analog routing (speaker ↔ headphone).
+
+Confirmed three ways:
+- **Codec register readback** (proves the switch hit silicon): SPEAKER → `R36=0x03F`
+  (spk vol full) `R38=0x004` (HP off); JACK → `R36=0x040` (spk **muted**) `R38=0x001`
+  (HP **on**). `R3=0x0ED` (shared amp) stays on in both.
+- **Remote speaker-mute A/B** (eMeet mic): the 5 kHz speaker resonance bursts to full
+  only during the SPEAKER window and drops to ~0 during JACK/SILENCE — output left the
+  speaker. (`room_ab.wav`; per-window 5 kHz trace in the session log.)
+- **User acoustic test**: headphones in the TRRS jack play the clean 1 kHz tone during
+  the JACK window — confirmed working on the bench ("works great").
+- Mic capture (`vu:`) streams through all states — full-duplex still intact while the
+  output is routed to the jack.
+
 ## Notes / non-issues
 
 - The on-device VU does not rise during TONE: the 3.5 mm mic isn't positioned to hear

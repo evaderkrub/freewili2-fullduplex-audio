@@ -40,6 +40,11 @@ static uint32_t tone[64] __attribute__((aligned(256)));  // 64 frames @16k = 4x 
 audio_i2s_duplex_play_loop(tone, 64);
 audio_i2s_duplex_play_stop();          // park DAC at silence
 
+// Route the output: onboard speaker, or the 3.5 mm TRRS jack (headphone/line out).
+// Mic capture is unaffected either way (independent ADC path).
+codec_nau88c10_set_output(CODEC_OUT_SPEAKER);     // onboard speaker
+codec_nau88c10_set_output(CODEC_OUT_HEADPHONE);   // 3.5 mm jack output
+
 // Capture: RX FIFO accessors plug straight into a ping-pong DMA (see vu_capture.c).
 volatile const void *rxf = audio_i2s_duplex_rxf();
 uint dreq = audio_i2s_duplex_rx_dreq();
@@ -75,8 +80,11 @@ powershell -File tools/flash.ps1          # program + verify + reset over SWD
 powershell -File tools/rtt.ps1 -Seconds 16   # live SEGGER RTT diagnostics
 ```
 
-The demo cycles **SILENCE (3 s) → TONE (6 s)**, drawing a `TONE ON 1kHz` / `TONE OFF`
-banner and a live mic VU bar on the LCD.
+The demo cycles **SILENCE → SPEAKER (4 s) → 3.5 mm JACK (4 s)**, drawing a per-state
+banner (`SPEAKER 1kHz` / `3.5mm JACK 1kHz` / `TONE OFF`) and a live mic VU bar on the
+LCD. The tone streams continuously across the SPEAKER and JACK windows — only the
+codec's analog output routing switches — so the same 1 kHz tone moves from the onboard
+speaker to the headphone jack while the mic keeps capturing.
 
 ## Tests
 
